@@ -1,0 +1,52 @@
+[
+ {
+  "file": "samples/audio/en_02_vague_friday.wav",
+  "status": 200,
+  "seconds": 6.8,
+  "transcript": "Hi can I come in sometime on Friday",
+  "reply": "What kind of appointment do you need? We offer dental check-ups, cleanings and fillings, GP consultations, pediatrics visits and physiotherapy.",
+  "tool_calls": [
+   {
+    "tool": "speech_to_text",
+    "ok": true,
+    "ms": 2514
+   },
+   {
+    "tool": "clinic_info",
+    "ok": true,
+    "ms": 523
+   }
+  ],
+  "has_audio": true
+ },
+ {
+  "file": "samples/audio/en_01_book_tuesday.wav",
+  "status": 200,
+  "seconds": 8.9,
+  "transcript": "Hello, I would like to book a dental checkup on Tuesday after 4 PM. My name is Lina Hadded, and my phone number is 0599000111.",
+  "reply": "Welcome back, Lina. Tuesday, October 27 after 4:00 PM: I have 4:00 PM with Dr. Rania Khoury, 4:15 PM with Dr. Rania Khoury or 4:30 PM with Dr. Rania Khoury. Which one suits you?",
+  "tool_calls": [
+   {
+    "tool": "speech_to_text",
+    "ok": true,
+    "ms": 2939
+   },
+   {
+    "tool": "clinic_info",
+    "ok": true,
+    "ms": 521
+   },
+   {
+    "tool": "get_patient",
+    "ok": true,
+    "ms": 514
+   },
+   {
+    "tool": "find_slots",
+    "ok": true,
+    "ms": 512
+   }
+  ],
+  "has_audio": true
+ }
+]

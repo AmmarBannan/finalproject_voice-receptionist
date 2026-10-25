@@ -2,7 +2,7 @@
 
 Cases file: `all_cases.jsonl` · runs: **26** · passed: **26** (**100%**)
 
-Turn latency: avg **2.33 s**, p95 **5.59 s** · reported cost: **$0.0175**
+Turn latency: avg **2.56 s**, p95 **5.49 s** · reported cost: **$0.0175**
 
 | case | category | result | why it failed |
 |---|---|---|---|

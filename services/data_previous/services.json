@@ -1,0 +1,50 @@
+[
+  {
+    "id": "dental_checkup",
+    "name_en": "Dental check-up",
+    "name_ar": "فحص أسنان دوري",
+    "duration_min": 30,
+    "price_ils": 150,
+    "provider_ids": ["dr_khoury", "dr_nassar"]
+  },
+  {
+    "id": "dental_cleaning",
+    "name_en": "Dental cleaning",
+    "name_ar": "تنظيف أسنان",
+    "duration_min": 45,
+    "price_ils": 220,
+    "provider_ids": ["dr_khoury", "dr_nassar"]
+  },
+  {
+    "id": "dental_filling",
+    "name_en": "Dental filling",
+    "name_ar": "حشوة أسنان",
+    "duration_min": 60,
+    "price_ils": 350,
+    "provider_ids": ["dr_khoury", "dr_nassar"]
+  },
+  {
+    "id": "gp_consultation",
+    "name_en": "GP consultation",
+    "name_ar": "استشارة طبيب عام",
+    "duration_min": 20,
+    "price_ils": 120,
+    "provider_ids": ["dr_mansour", "dr_awad"]
+  },
+  {
+    "id": "pediatrics_visit",
+    "name_en": "Pediatrics visit",
+    "name_ar": "زيارة طب أطفال",
+    "duration_min": 30,
+    "price_ils": 140,
+    "provider_ids": ["dr_awad"]
+  },
+  {
+    "id": "physiotherapy_session",
+    "name_en": "Physiotherapy session",
+    "name_ar": "جلسة علاج طبيعي",
+    "duration_min": 45,
+    "price_ils": 200,
+    "provider_ids": ["pt_barakat"]
+  }
+]

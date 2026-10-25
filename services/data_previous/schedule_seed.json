@@ -1,0 +1,88 @@
+{
+  "booking_probability": 0.45,
+  "horizon_days": 21,
+  "random_seed": "zaytoun-2026-11-02",
+  "seed_patient": {"name": "Other patient", "phone": null},
+  "patient_bookings": [
+    {
+      "booking_id": "BK-0001",
+      "day": "first_wednesday",
+      "start": "10:00",
+      "service_id": "physiotherapy_session",
+      "provider_id": "pt_barakat",
+      "patient": {"name": "Omar Saleh", "phone": "0599000222"},
+      "purpose": "Omar's weekly physiotherapy"
+    },
+    {
+      "booking_id": "BK-0002",
+      "day": "today",
+      "start": "15:00",
+      "service_id": "gp_consultation",
+      "provider_id": "dr_mansour",
+      "patient": {"name": "Emily Carter", "phone": "0599000444"},
+      "purpose": "Emily's GP consultation"
+    },
+    {
+      "booking_id": "BK-0003",
+      "day": "first_saturday",
+      "start": "10:00",
+      "service_id": "pediatrics_visit",
+      "provider_id": "dr_awad",
+      "patient": {"name": "Adam Odeh", "phone": "0599000333", "guardian_name": "Mariam Odeh"},
+      "purpose": "Adam Odeh pediatric visit"
+    },
+    {
+      "booking_id": "BK-0004",
+      "day": "first_tuesday",
+      "start": "17:00",
+      "service_id": "dental_checkup",
+      "provider_id": "dr_khoury",
+      "patient": {"name": "Other patient", "phone": null},
+      "purpose": "Tuesday evening dental check-up block"
+    },
+    {
+      "booking_id": "BK-0005",
+      "day": "first_tuesday",
+      "start": "17:30",
+      "service_id": "dental_checkup",
+      "provider_id": "dr_nassar",
+      "patient": {"name": "Other patient", "phone": null},
+      "purpose": "Tuesday evening dental check-up block"
+    },
+    {
+      "booking_id": "BK-0006",
+      "day": "first_tuesday",
+      "start": "18:00",
+      "service_id": "dental_checkup",
+      "provider_id": "dr_khoury",
+      "patient": {"name": "Other patient", "phone": null},
+      "purpose": "Tuesday evening dental check-up block"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "B1",
+      "day": "first_wednesday",
+      "provider_id": "dr_khoury",
+      "window": ["15:45", "17:00"],
+      "fill": true,
+      "purpose": "Provide a free window for a dental cleaning"
+    },
+    {
+      "id": "B2",
+      "day": "first_thursday",
+      "provider_id": "dr_awad",
+      "window": ["16:00", "17:00"],
+      "fill": true,
+      "purpose": "Pediatrics slot window"
+    },
+    {
+      "id": "B3",
+      "day": "first_thursday",
+      "provider_id": "pt_barakat",
+      "window": ["09:45", "11:30"],
+      "fill": true,
+      "purpose": "Physiotherapy availability"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+Running 26 case(s) x 1 against http://localhost:8000
+
+  S1-01              happy_path       PASS  (5.7s)
+  S1-02              clarification    PASS  (1.7s)
+  S1-03              conflict         PASS  (2.7s)
+  S1-04              rejection        PASS  (2.5s)
+  S1-05              tool_failure     PASS  (2.9s)
+  S1-06              guardrail        PASS  (0.0s)
+  S1-07              memory           PASS  (2.6s)
+  S1-08              voice            PASS  (8.3s)
+  S1-09              policy_conflict  PASS  (3.1s)
+  S1-10              guardrail        PASS  (3.2s)
+  M-01               happy_path       PASS  (3.3s)
+  M-02               conflict         PASS  (3.3s)
+  M-03               clarification    PASS  (5.5s)
+  M-04               happy_path       PASS  (5.2s)
+  M-05               policy_conflict  PASS  (1.9s)
+  M-06               happy_path       PASS  (2.5s)
+  M-07               policy_conflict  PASS  (2.9s)
+  M-08               policy_conflict  PASS  (2.5s)
+  M-09               happy_path       PASS  (3.4s)
+  M-10               voice            PASS  (17.2s)
+  M-11               guardrail        PASS  (2.1s)
+  M-12               guardrail        PASS  (5.5s)
+  M-13               tool_failure     PASS  (2.4s)
+  M-14               policy_conflict  PASS  (2.4s)
+  M-15               memory           PASS  (3.3s)
+  M-16               guardrail        PASS  (4.0s)
+
+Passed 26/26 (100%) · turn latency avg 2.56s, p95 5.49s
+By category: {'clarification': '2/2', 'conflict': '2/2', 'guardrail': '5/5', 'happy_path': '5/5', 'memory': '2/2', 'policy_conflict': '5/5', 'rejection': '1/1', 'tool_failure': '2/2', 'voice': '2/2'}
+Scorecard written to _to_delete_scorecard_official.md
+EVALS_DONE
