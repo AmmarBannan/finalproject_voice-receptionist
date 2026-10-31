@@ -14,4 +14,4 @@ tts_test.wav
 .gradio/
 
 # App runtime state (conversation memory)
-data/
+/data/
