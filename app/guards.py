@@ -49,6 +49,24 @@ BANNED_OUTPUT = [
     "أسبرين", "مضاد حيوي", "نوبة قلبية", "باراسيتامول",
 ]
 
+# an explicit request to speak a language ("speak English", "in Arabic please", "بالعربي", "تكلم انجليزي");
+# a mention like "doctors who speak Arabic" is not a request
+_EN_WORDS = r"(?:english|[اإأ]ل?[اإأ]?ن[جك]ليز\w*)"
+_AR_WORDS = r"(?:arabic|ال?عربي\w*)"
+_ASK = (r"(?:^|[.,!?;؟،]\s*|\b(?:you|please|let'?s|we|to|and|i)\s+)"
+        r"(?:speak|talk|reply|respond|answer|continue|switch(?:\s+back)?|change|go\s+back|write|use)\b"
+        r"(?:\s+(?:to|in|with\s+me\s+in|back\s+to|only\s+in))?\s+{lang}\b")
+_ASK_AR = (r"(?:تكلم|تكلمي|احكي|إحكي|تحدث|تحدثي|كلمني|كلميني|رد|ردي|جاوب|جاوبي|أجب|اجب|حول|غير|خلينا)\w*"
+           r"(?:\s+(?:معي|معاي|علي|عليّ|إلى|الى|ل))?\s+(?:ب|باللغة\s+)?{lang}")
+_SWITCH = r"\b(?:switch|change|go)\w*\b[^.?!؟]{{0,25}}\bto\s+{lang}\b"
+LANGUAGE_REQUEST = {
+    "en": [_ASK.format(lang=_EN_WORDS), _SWITCH.format(lang=_EN_WORDS), r"\bin\s+english\b", r"\benglish,?\s+(?:please|only)\b",
+           r"^\W*english\W*$", r"بال(?:لغة\s+ال)?[اإأ]ن[جك]ليز", _ASK_AR.format(lang=_EN_WORDS)],
+    "ar": [_ASK.format(lang=_AR_WORDS), _SWITCH.format(lang=_AR_WORDS), r"\bin\s+arabic\b", r"\barabic,?\s+(?:please|only)\b",
+           r"^\W*arabic\W*$", r"بال(?:لغة\s+ال)?عربي", _ASK_AR.format(lang=_AR_WORDS)],
+}
+_LANG_RX = {lang: [re.compile(p, re.I) for p in pats] for lang, pats in LANGUAGE_REQUEST.items()}
+
 _RX = {name: [re.compile(p, re.I) for p in pats] for name, pats in
        {"injection": INJECTION_PATTERNS, "emergency": EMERGENCY_PATTERNS, "medical": MEDICAL_ADVICE_PATTERNS}.items()}
 
@@ -67,7 +85,20 @@ def input_guard(text: str) -> dict:
         "emergency": _hit("emergency", t),
         "medical_advice": _hit("medical", t),
         "arabic": bool(re.search(r"[؀-ۿ]", t)),
+        "has_words": bool(re.search(r"[A-Za-z؀-ۿ]{2,}", t)),
+        "language_request": requested_language(t),
     }
+
+
+def requested_language(text: str) -> str | None:
+    """'en' / 'ar' when the caller explicitly asks for that language, else None.
+
+    If both are named ("switch from Arabic to English"), the one said last wins.
+    """
+    t = (text or "").strip()
+    last = {lang: max((m.end() for rx in rxs for m in rx.finditer(t)), default=-1) for lang, rxs in _LANG_RX.items()}
+    best = max(last, key=last.get)
+    return best if last[best] >= 0 else None
 
 
 def strip_injection(text: str) -> str:

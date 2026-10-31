@@ -14,8 +14,6 @@ mcp==1.28.1               # the 1.x API used in Module 5 (CrewAI 1.15.x also nee
 # Your app: file uploads for POST /api/voice
 python-multipart==0.0.32
 
-# Voice: offline text-to-speech (voices download on first use into voice/models/)
-piper-tts==1.8.0
 onnxruntime==1.31.0
 numpy==2.5.4
 

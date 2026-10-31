@@ -94,7 +94,6 @@ async def check_mcp(today: str) -> None:
 def check_voice() -> None:
     sys.path.insert(0, str(ROOT))
     stt = os.getenv("STT_PROVIDER") or "openrouter"
-    tts = os.getenv("TTS_PROVIDER") or "piper"
     if stt == "openrouter":
         if os.getenv("OPENROUTER_API_KEY"):
             ok(f"Speech-to-text: openrouter ({os.getenv('STT_MODEL') or 'google/gemini-2.5-flash-lite'}), key found")
@@ -104,20 +103,10 @@ def check_voice() -> None:
         ok("Speech-to-text: whisper_local (faster-whisper installed)")
     else:
         warn("Speech-to-text: STT_PROVIDER=whisper_local but faster-whisper is not installed")
-    if tts == "piper":
-        if importlib.util.find_spec("piper"):
-            from voice.tts import voice_status
-
-            missing = [v for v, present in voice_status().items() if not present]
-            if missing:
-                warn(f"Text-to-speech: piper installed; voices download on first use ({', '.join(missing)}): "
-                     "python -m voice.tts --download")
-            else:
-                ok("Text-to-speech: piper installed, English and Arabic voices present")
-        else:
-            warn("Text-to-speech: piper-tts is not installed (pip install -r requirements.txt)")
+    if os.getenv("AZURE_SPEECH_KEY") and os.getenv("AZURE_SPEECH_REGION"):
+        ok(f"Text-to-speech: Azure ({os.getenv('AZURE_SPEECH_REGION')}), key found")
     else:
-        ok(f"Text-to-speech: {tts} (the browser speaks the reply)")
+        warn("Text-to-speech: AZURE_SPEECH_KEY / AZURE_SPEECH_REGION are empty (replies will not be spoken)")
 
 
 def main() -> int:

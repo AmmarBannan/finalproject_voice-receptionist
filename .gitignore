@@ -7,8 +7,6 @@ __pycache__/
 .venv/
 venv/
 
-# Piper voices (downloaded on first use, about 63 MB each)
-voice/models/
 *.part
 tts_test.wav
 

@@ -24,7 +24,6 @@ services:
       CLINIC_API_URL: http://clinic-api:8101
       CLINIC_API_KEY: ${CLINIC_API_KEY:-dev-key-change-me}
     volumes:
-      - piper-voices:/app/voice/models
       - app-data:/app/data
     depends_on:
       clinic-api:
@@ -43,5 +42,4 @@ services:
         condition: service_healthy
 
 volumes:
-  piper-voices:
   app-data:

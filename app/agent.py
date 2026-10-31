@@ -169,7 +169,12 @@ async def ensure_context(session: dict, calls: list) -> bool:
 async def guard_node(turn: Turn) -> Turn:
     msg, session = turn["message"], turn["session"]
     g = input_guard(msg)
-    session["language"] = "ar" if g["arabic"] else "en"
+    # The session keeps one language: set from the first real message, changed only when the caller asks
+    # ("speak English", "بالعربي"). A phone number, a Latin-letter name or an "ok" never flips it.
+    if g["language_request"]:
+        session["language"], session["language_locked"] = g["language_request"], True
+    elif not session.get("language_locked") and g["has_words"]:
+        session["language"], session["language_locked"] = ("ar" if g["arabic"] else "en"), True
     ar = session["language"] == "ar"
     if g["empty"]:
         return {"guard": g, "route": "fixed", "state": session.get("state") or "start",
@@ -199,7 +204,10 @@ async def guard_node(turn: Turn) -> Turn:
 async def context_node(turn: Turn) -> Turn:
     if not await ensure_context(turn["session"], turn["tool_calls"]):
         return {"route": "fixed", "state": "failed",
-                "reply": "Sorry, our booking system is not answering right now, so I can't check the calendar. "
+                "reply": "عذراً، نظام الحجز لا يستجيب الآن، لذلك لا أستطيع الاطلاع على المواعيد. "
+                         "يرجى المحاولة بعد بضع دقائق أو الاتصال بالعيادة مباشرة."
+                if turn["session"]["language"] == "ar" else
+                         "Sorry, our booking system is not answering right now, so I can't check the calendar. "
                          "Please try again in a few minutes, or call the clinic directly."}
     return {"route": "intake"}
 
@@ -224,7 +232,8 @@ async def intake_node(turn: Turn) -> Turn:
     except Exception as exc:  # noqa: BLE001
         log.error("intake failed: %s", exc)
         return {"route": "fixed", "state": session["state"],
-                "reply": "Sorry, I'm having trouble understanding right now. Could you say that again?"}
+                "reply": "عذراً، أواجه صعوبة في الفهم الآن. هل يمكنك إعادة ذلك؟" if session["language"] == "ar"
+                else "Sorry, I'm having trouble understanding right now. Could you say that again?"}
     if turn["guard"].get("injection"):
         x.injection_detected = True
     _merge(session, x, turn["message"])
@@ -591,7 +600,8 @@ async def decision_node(turn: Turn) -> Turn:
     session = turn["session"]
     pending = session["pending"]
     out = await decide(session, pending["action_id"], turn["intake"]["intent"] == "confirm", turn["tool_calls"])
-    return {"draft": out["reply"], "state": out["state"], "pending_action": out.get("pending_action"),
+    # "reply", not "draft": decide() already wrote it in the session's language, so speak_node keeps it as is
+    return {"reply": out["reply"], "state": out["state"], "pending_action": out.get("pending_action"),
             "result": out.get("result"), "allowed_minutes": out.get("allowed_minutes", []),
             "allowed_ids": out.get("allowed_ids", [])}
 
@@ -627,6 +637,9 @@ async def other_node(turn: Turn) -> Turn:
     if intent in ("medical", "emergency"):
         return await guard_like(turn, intent)
     hello = _greeting(turn["session"])
+    if turn.get("guard", {}).get("language_request") and intent in ("greeting", "other"):
+        # a bare "please speak Arabic": acknowledge it (speak_node says it in the new language)
+        return {"draft": hello + "Of course. How can I help you today?", "state": turn["session"].get("state") or "start"}
     if intent == "reject":
         return {"draft": "No problem. Is there anything else I can help you with?", "state": "completed"}
     if intent == "greeting":

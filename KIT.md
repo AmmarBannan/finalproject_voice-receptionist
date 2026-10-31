@@ -43,7 +43,7 @@ uvicorn services.clinic_api:app --port 8101
 
 # terminal 2
 python check_kit.py             # ends with: ✅ Kit ready.
-python -m voice.tts --download  # optional now: fetches the two Piper voices (about 63 MB each)
+python -m voice.tts "Hello"     # optional: checks the Azure voice (needs AZURE_SPEECH_KEY)
 ```
 
 API docs: http://localhost:8101/docs. The services read `.env` themselves.
@@ -270,28 +270,15 @@ audio = speak("Your appointment is booked.")    # (wav_bytes, "audio/wav") or No
 The Gradio microphone sends **WAV** (Gradio encodes the recording in the browser), so no ffmpeg is
 needed. If you build another UI, record WAV, or convert WebM/Ogg before calling `transcribe`.
 
-**Text-to-speech** (`TTS_PROVIDER`)
+**Text-to-speech** (Azure AI Speech)
 
-| Provider | How | Notes |
-|---|---|---|
-| `piper` (default) | Offline neural voices, chosen by the reply's script: Arabic letters use the Arabic voice | First use downloads the voice into `voice/models/` (git-ignored). Loading takes about 5 s once; then about 0.2-0.6 s per sentence on a laptop CPU |
-| `browser` | `speak()` returns `None`; the UI speaks the reply with the browser's `speechSynthesis` | No download, voice quality depends on the browser |
-
-| Piper voice | Use | File (Hugging Face `rhasspy/piper-voices`, tag v1.0.0) | What its model card says |
-|---|---|---|---|
-| `en_US-ljspeech-medium` | **English, default** | https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx (+ `.onnx.json`), 64 MB | Dataset LJ Speech, **licence: public domain**; trained from scratch. Safe for a published demo |
-| `ar_JO-kareem-medium` | Arabic, default (the only `ar_JO` voice) | https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx (+ `.onnx.json`), 63 MB | Dataset https://github.com/AliMokhammad/arabicttstrain, **"License: See URL"**, and that repository states no licence; the voice was fine-tuned from the lessac voice below. So its licence is unclear: fine for a course demo, but if you publish recordings or a hosted demo, prefer `TTS_PROVIDER=browser` for Arabic |
-| `en_US-lessac-medium` | English, optional (`PIPER_VOICE_EN=en_US-lessac-medium`) | https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx (+ `.onnx.json`), 63 MB | Dataset Blizzard 2013 Lessac, **research-only licence** (no commercial use). Do not use it in your published demo |
-
-The downloader checks the SHA-256 of every voice model above. The `piper-tts` package itself is GPL-3.0.
-Model cards: `MODEL_CARD` next to each voice in the repository. With Piper, Arabic names such as
-"Khoury" come out approximate in the English voice; the browser voice has the same limit.
-
-Not used here: OpenRouter text-to-speech (blocked on accounts with zero data retention) and
-`edge-tts` (its unofficial endpoint now answers 403). Alternative if you want cloud voices:
-**Azure AI Speech** has a free tier (F0, about 0.5 million characters of neural text-to-speech and
-5 audio hours of speech-to-text per month; check the current pricing page) with Arabic voices
-such as `ar-JO-SanaNeural`. That would be your own adapter in `voice/`.
+`voice/tts.py` calls the Azure AI Speech REST API with `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`.
+The voice follows the reply's script: Arabic letters use `ar-JO-SanaNeural` (Jordanian, close to the
+Levantine callers; male alternative `ar-JO-TaimNeural`), otherwise `en-US-JennyNeural`. Override them with
+`AZURE_VOICE_AR` / `AZURE_VOICE_EN`. `speak()` returns 24 kHz WAV, or `None` (and logs a warning) when
+Azure fails, so the reply is shown but not spoken. `/api/voice` returns the audio; the UI fetches audio
+for typed and Approve/Reject replies from `POST /api/speak`. The free tier (F0) covers about 0.5 million
+neural characters per month; check the current pricing page.
 
 A `/api/voice` sketch for your app (`transcribe` and `speak` block, so run them in a thread):
 
@@ -364,7 +351,7 @@ cases and other recordings.
 | `CLINIC_TODAY`, `CLINIC_TIME` | real date, `08:00` | API clock |
 | `CLINIC_HTTP_TIMEOUT` | `10` | MCP server: seconds to wait for the API |
 | `STT_PROVIDER`, `STT_MODEL`, `STT_FALLBACK_MODEL`, `WHISPER_MODEL` | `openrouter`, `google/gemini-2.5-flash-lite`, `mistralai/voxtral-small-24b-2507`, `base` | `voice/stt.py` |
-| `TTS_PROVIDER`, `PIPER_VOICE_EN`, `PIPER_VOICE_AR`, `PIPER_MODELS_DIR` | `piper`, `en_US-ljspeech-medium`, `ar_JO-kareem-medium`, `voice/models` | `voice/tts.py` |
+| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_VOICE_EN`, `AZURE_VOICE_AR`, `AZURE_TTS_TIMEOUT` | empty, empty, `en-US-JennyNeural`, `ar-JO-SanaNeural`, `10` s | `voice/tts.py` |
 | `APP_URL`, `UI_PORT`, `UI_TIMEOUT` | `http://localhost:8000`, `7860`, `120` s | UI, eval runner (`APP_URL`) |
 
 ## Docker
@@ -387,7 +374,7 @@ inside your app's container (`python -m services.clinic_mcp`), so copy `services
 | Port 8101 already in use | Another clinic API is running: stop it, or use another port and set `CLINIC_API_URL` |
 | The agent books the wrong day | It guessed today's date: call `clinic_info` and use `today` |
 | Speech-to-text 429 | Rate limit upstream: the adapter retries and falls back to `STT_FALLBACK_MODEL` |
-| Piper download is slow or blocked | Run `python -m voice.tts --download` once on a good connection, or set `TTS_PROVIDER=browser` |
+| Replies are not spoken | Check `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` and the `Azure TTS failed` warning in the app log |
 | `ZoneInfoNotFoundError` | `pip install tzdata` (it is in `requirements.txt`) |
 
 Do not change the files in `services/`: the hidden tests run against the original simulated system.

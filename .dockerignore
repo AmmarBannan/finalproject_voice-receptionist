@@ -3,7 +3,6 @@
 .venv
 venv
 **/__pycache__
-voice/models
 samples
 evals/scorecard.*
 .gradio

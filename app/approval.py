@@ -2,6 +2,7 @@
 
 The LLM proposes (a pending_action stored in the session); this module commits it through MCP with
 exactly the stored payload and Idempotency-Key = action_id, so a double click cannot double-book.
+No LLM runs here: every reply is written by code, in English or Arabic (the session's language).
 """
 from __future__ import annotations
 
@@ -22,16 +23,42 @@ def _day(iso: str) -> str:
     return f"{d.strftime('%A')}, {d.strftime('%B')} {d.day}"
 
 
+AR_DAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+AR_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر",
+             "نوفمبر", "ديسمبر"]
+
+
+def _ar(session: dict) -> bool:
+    return session.get("language") == "ar"
+
+
+def _day_ar(iso: str) -> str:
+    d = date.fromisoformat(iso)
+    return f"{AR_DAYS[d.weekday()]} {d.day} {AR_MONTHS[d.month - 1]}"
+
+
+def _time_ar(hhmm: str) -> str:
+    """'16:30' -> '4:30 مساءً'."""
+    h, m = map(int, hhmm.split(":"))
+    return f"{h % 12 or 12}:{m:02d} {'صباحاً' if h < 12 else 'مساءً'}"
+
+
+def _provider_ar(provider_id: str | None, fallback: str | None) -> str:
+    from .agent import PROVIDERS  # local import: agent imports this module
+    return (PROVIDERS.get(provider_id or "") or {}).get("name_ar") or fallback or ""
+
+
 async def decide(session: dict, action_id: str, approved: bool, calls: list) -> dict:
     """Returns {reply, state, result?, pending_action?, allowed_minutes, allowed_ids}."""
     done = session["done_actions"].get(action_id)
     if done:  # the double click: answer again, write nothing again
         log.info("action %s already executed, replaying", action_id)
-        return {**done, "reply": "That's already done. " + done["reply"]}
+        return {**done, "reply": ("تم ذلك بالفعل. " if _ar(session) else "That's already done. ") + done["reply"]}
     pending = session.get("pending")
     if not pending or pending["action_id"] != action_id:
-        return {"reply": "I don't have that request waiting for your approval, so nothing was changed. "
-                         "Would you like me to look for a time?", "state": session.get("state") or "start",
+        return {"reply": "لا يوجد طلب بانتظار موافقتك، لذلك لم يتغير شيء. هل تريد أن أبحث لك عن موعد؟" if _ar(session)
+                else "I don't have that request waiting for your approval, so nothing was changed. "
+                     "Would you like me to look for a time?", "state": session.get("state") or "start",
                 "pending_action": pending}
 
     if not approved:
@@ -40,6 +67,9 @@ async def decide(session: dict, action_id: str, approved: bool, calls: list) -> 
         session["req"].pop("exact_time", None)
         session["req"].pop("choice_slot", None)
         what = "booked" if pending["type"] == "create_booking" else "cancelled"
+        if _ar(session):
+            what_ar = "حجز" if pending["type"] == "create_booking" else "إلغاء"
+            return {"reply": f"لا مشكلة، لم يتم {what_ar} أي شيء. هل تريد وقتاً أو يوماً آخر؟", "state": "rejected"}
         return {"reply": f"No problem, nothing has been {what}. Would you like a different time or day instead?",
                 "state": "rejected"}
 
@@ -48,7 +78,8 @@ async def decide(session: dict, action_id: str, approved: bool, calls: list) -> 
     if pending["type"] == "cancel_booking":
         return await _cancel(session, pending, calls)
     session["pending"] = None
-    return {"reply": "Sorry, I can't do that kind of action.", "state": "failed"}
+    return {"reply": "عذراً، لا أستطيع تنفيذ هذا النوع من الطلبات." if _ar(session)
+            else "Sorry, I can't do that kind of action.", "state": "failed"}
 
 
 async def _book(session: dict, pending: dict, calls: list) -> dict:
@@ -58,11 +89,18 @@ async def _book(session: dict, pending: dict, calls: list) -> dict:
         b = res
         bid = b["booking_id"]
         session["pending"] = None
-        reply = (f"Booked. Your reference is {bid}: a {b.get('service_name', '').lower() or 'visit'} on "
-                 f"{_day(b['date'])} at {spoken_time(b['start'])} with {b.get('provider_name')}.")
-        if b.get("new_patient"):
-            reply += " As a new patient, please arrive 10 minutes early."
-        reply += " See you then!"
+        if _ar(session):
+            reply = (f"تم الحجز. رقم حجزك {bid}: {b.get('service_name_ar') or 'زيارة'} يوم {_day_ar(b['date'])} "
+                     f"الساعة {_time_ar(b['start'])} مع {_provider_ar(b.get('provider_id'), b.get('provider_name'))}.")
+            if b.get("new_patient"):
+                reply += " بما أنك مريض جديد، يرجى الحضور قبل الموعد بعشر دقائق."
+            reply += " نراك قريباً!"
+        else:
+            reply = (f"Booked. Your reference is {bid}: a {b.get('service_name', '').lower() or 'visit'} on "
+                     f"{_day(b['date'])} at {spoken_time(b['start'])} with {b.get('provider_name')}.")
+            if b.get("new_patient"):
+                reply += " As a new patient, please arrive 10 minutes early."
+            reply += " See you then!"
         out = {"reply": reply, "state": "completed",
                "result": {"booking_id": bid, "slot_id": b.get("slot_id"), "date": b.get("date"),
                           "start": b.get("start"), "provider_name": b.get("provider_name")},
@@ -87,7 +125,15 @@ async def _book(session: dict, pending: dict, calls: list) -> dict:
         near = nearest([s for s in alt.get("slots") or [] if s["slot_id"] != slot["slot_id"]],
                        to_min(slot["start"]), slot.get("provider_id"))
         session["offered"] = near
-        if near:
+        if _ar(session):
+            taken = f"عذراً، موعد الساعة {_time_ar(slot['start'])} حجزه شخص آخر للتو، لذلك لم يتم الحجز."
+            if near:
+                opts = " أو ".join(f"الساعة {_time_ar(s['start'])} مع {_provider_ar(s.get('provider_id'), s['provider_name'])}"
+                                   for s in near)
+                reply = f"{taken} يوم {_day_ar(slot['date'])} ما زال بإمكاني أن أعرض عليك {opts}. أيهما تفضل؟"
+            else:
+                reply = f"{taken} هل تريد أن أبحث في يوم آخر؟"
+        elif near:
             opts = " or ".join(f"{spoken_time(s['start'])} with {s['provider_name']}" for s in near)
             reply = (f"I'm sorry, {spoken_time(slot['start'])} was just taken by someone else, so nothing was booked. "
                      f"On {_day(slot['date'])} I can still offer {opts}. Which would you like?")
@@ -98,11 +144,16 @@ async def _book(session: dict, pending: dict, calls: list) -> dict:
                 "allowed_minutes": [to_min(slot["start"])] + [to_min(s["start"]) for s in near]}
     if code == "policy_violation" or status in (400, 422):
         session["pending"] = None
+        if _ar(session):
+            return {"reply": "عذراً، لم أتمكن من إتمام هذا الحجز لأنه يخالف سياسة العيادة. هل تريد تجربة شيء آخر؟",
+                    "state": "failed"}
         return {"reply": f"Sorry, I couldn't book that: {err.get('message', 'it breaks a clinic policy')}. "
                          "Would you like to try something else?", "state": "failed"}
     # 5xx, timeout, unreachable: nothing was written. Keep the pending action so the caller can retry
     # with the same idempotency key.
-    return {"reply": "Sorry, our booking system is unavailable right now, so your appointment was NOT booked. "
+    return {"reply": "عذراً، نظام الحجز غير متاح الآن، لذلك لم يتم حجز موعدك. هل تريد أن أحاول مرة أخرى بعد قليل، "
+                     "أو أن تختار وقتاً آخر؟" if _ar(session) else
+                     "Sorry, our booking system is unavailable right now, so your appointment was NOT booked. "
                      "Would you like me to try again in a moment, or choose another time?",
             "state": "failed", "pending_action": pending}
 
@@ -113,7 +164,8 @@ async def _cancel(session: dict, pending: dict, calls: list) -> dict:
     bid = p["booking_id"]
     if res.get("ok"):
         session["pending"] = None
-        out = {"reply": f"Done: booking {bid} is cancelled. Would you like to book another time?",
+        out = {"reply": f"تم: الحجز {bid} أُلغي. هل تريد حجز موعد آخر؟" if _ar(session)
+               else f"Done: booking {bid} is cancelled. Would you like to book another time?",
                "state": "completed", "result": {"booking_id": bid, "status": "cancelled"}, "allowed_ids": [bid]}
         session["done_actions"][pending["action_id"]] = out
         session["patient_phone"] = None  # re-read the record next time: its upcoming list changed
@@ -121,14 +173,19 @@ async def _cancel(session: dict, pending: dict, calls: list) -> dict:
     err = res.get("error") or {}
     if err.get("code") == "too_late_to_cancel":
         session["pending"] = None
-        return {"reply": "Sorry, that appointment starts in less than 24 hours, so I can't cancel it here. "
-                         f"Please call the clinic on {session['clinic'].get('phone')}.", "state": "failed",
+        return {"reply": ("عذراً، هذا الموعد يبدأ خلال أقل من 24 ساعة، لذلك لا أستطيع إلغاءه من هنا. "
+                          f"يرجى الاتصال بالعيادة على الرقم {session['clinic'].get('phone')}.") if _ar(session) else
+                         ("Sorry, that appointment starts in less than 24 hours, so I can't cancel it here. "
+                          f"Please call the clinic on {session['clinic'].get('phone')}."), "state": "failed",
                 "allowed_ids": [bid]}
     if err.get("code") == "already_cancelled":
         session["pending"] = None
-        return {"reply": f"Booking {bid} was already cancelled.", "state": "completed", "allowed_ids": [bid]}
-    return {"reply": "Sorry, our booking system is unavailable right now, so the appointment was NOT cancelled. "
-                     "Would you like me to try again in a moment?", "state": "failed", "pending_action": pending,
+        return {"reply": f"الحجز {bid} ملغى من قبل." if _ar(session) else f"Booking {bid} was already cancelled.",
+                "state": "completed", "allowed_ids": [bid]}
+    return {"reply": "عذراً، نظام الحجز غير متاح الآن، لذلك لم يتم إلغاء الموعد. هل تريد أن أحاول مرة أخرى بعد قليل؟"
+            if _ar(session) else "Sorry, our booking system is unavailable right now, so the appointment was NOT "
+                                 "cancelled. Would you like me to try again in a moment?",
+            "state": "failed", "pending_action": pending,
             "allowed_ids": [bid]}
 
 

@@ -22,7 +22,7 @@ Agent     Booked. Your reference is BK-1001: a dental check-up on Tuesday, Novem
           Dr. Rania Khoury. See you then!
 ```
 
-- Voice in (speech-to-text) and voice out (Piper neural TTS, English and Arabic chosen by script).
+- Voice in (speech-to-text) and voice out (Azure AI Speech neural TTS, English and Arabic chosen by script).
 - Taken time → the nearest real slots before and after. Closed day / after closing → says the hours.
 - Returning patients recognised by phone; their preferred provider is offered first; new patients are remembered.
 - Cancellations behind their own approval, with the 24-hour rule checked before any write.
@@ -34,7 +34,7 @@ Agent     Booked. Your reference is BK-1001: a dental check-up on Tuesday, Novem
  Browser (Gradio UI: mic, transcript, Approve/Reject)
         │  /api/chat · /api/voice · /api/approve           (the Ship Week API contract)
         ▼
- FastAPI app (app/main.py) ── STT (OpenRouter audio model) / TTS (Piper)          [real]
+ FastAPI app (app/main.py) ── STT (OpenRouter audio model) / TTS (Azure Speech)   [real]
         │
         ▼
  LangGraph state machine (app/agent.py)
@@ -79,7 +79,7 @@ python ui/app_ui.py         # open http://localhost:7860
 Or everything at once: `docker compose up --build` (clinic API :8101, app :8000, UI :7860).
 
 `python check_kit.py` ends with **✅ Kit ready.** when the clinic API, the MCP server and the voice setup answer.
-`python -m voice.tts --download` fetches the Piper voices ahead of time (otherwise the first spoken reply does it).
+Text-to-speech needs `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` in `.env`; test it with `python -m voice.tts "Hello"`.
 
 ## How it behaves — the approval gate
 
@@ -156,7 +156,7 @@ restating a request is not a confirmation.
 |---|---|
 | LLM (OpenRouter `openai/gpt-4.1-mini`) | **Real** |
 | Speech-to-text (OpenRouter audio model) | **Real** |
-| Text-to-speech (Piper, offline neural voices) | **Real** |
+| Text-to-speech (Azure AI Speech neural voices) | **Real** |
 | Clinic booking system + its MCP server | **Simulated** (fictional data, real behaviour: auth, 409/422/503, idempotency) |
 
 ## Memory
@@ -195,6 +195,6 @@ DESIGN.md       states, roles, tools, the approval gate
 ## Acknowledgements
 
 Kit, simulated clinic and eval runner: JHF Agentic AI Bootcamp (Jerusalem High-Tech Foundry, with COMCEC).
-Piper voice `en_US-ljspeech-medium` (LJ Speech, public domain); `ar_JO-kareem-medium` (licence unclear, see KIT.md).
+Azure AI Speech voices `en-US-JennyNeural` and `ar-JO-SanaNeural`.
 The clinic, its patients and providers are fictional.
 "# finalproject_voice-receptionist" 
